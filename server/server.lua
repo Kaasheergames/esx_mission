@@ -27,6 +27,7 @@ AddEventHandler("esx_mission:startmission", function()
     local inventory = xPlayer.getMoney()
     if inventory >= Config.StartAmount then
         TriggerClientEvent("esx_mission:return2", source, true)
+	xPlayer.removeMoney(Config.StartAmount)
     else
         TriggerClientEvent("esx_mission:return2", source, false)
         TriggerClientEvent('esx:showNotification', source, "~r~You do not have the required amount of money")
