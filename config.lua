@@ -26,7 +26,6 @@ Config.StartAmount = 50000
 Config.PropItem = "prop_mil_crate_01"
 
 Config.OpenItem = 'lockpick'
-Config.Reward = 'goldbar'
 
 Config.Items = {
     {
