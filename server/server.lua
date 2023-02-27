@@ -5,7 +5,6 @@ TriggerEvent('esx:getSharedObject', function(obj)
 end)
 
 local item = Config.OpenItem
-local rewards = Config.Reward
 
 RegisterServerEvent("esx_mission:openbox")
 AddEventHandler("esx_mission:openbox", function()
