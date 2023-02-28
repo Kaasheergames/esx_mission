@@ -1,3 +1,7 @@
+
+
+
+
 ESX = nil
 
 Citizen.CreateThread(function()
@@ -13,7 +17,15 @@ Citizen.CreateThread(function()
 	PlayerData = ESX.GetPlayerData()
 end)
 
-
+--language
+local localmessage2 = "~w~[~b~E~w~] - Open Box"
+local distancemessage2 = "Open Box"
+local localmessage = "~w~[~b~E~w~] - Start Mission (~b~€50,000~w~)"
+local distancemessage = "~w~Start Mission"
+local missionActive = "~w~You already have a mission active"
+local missionStarted = "~g~You've started a mission. Go to the location"
+local missionEnded = "~g~Mission ended, Thank for doing bussines"
+--
       
 local spawnedPeds = {}
 local inMission = false
@@ -25,18 +37,17 @@ Citizen.CreateThread(function()
 		local coords = GetEntityCoords(ped)
 		local v = Config.NPCStart
 		local dist = GetDistanceBetweenCoords(coords, v, true)
-		local localmessage = "~w~[~b~E~w~] - Start Mission (~b~€50,000~w~)"
-		local distancemessage = "~w~Start Mission"
+
 		debounce = true
 
 		if dist <3 then
 			if inMission then
-				DrawScriptText(vector3(v.x, v.y, v.z +1), "~w~You already have a mission active")
+				DrawScriptText(vector3(v.x, v.y, v.z +1), missionActive)
 			else
 				if dist <1.5 then
 					debounce = false
 					DrawScriptText(vector3(v.x, v.y, v.z +1), localmessage)
-					if IsControlJustReleased(0, 38) then
+					if IsControlJustReleased(0, Config.InteractionButton) then
 						debounce = true
 						TriggerServerEvent("esx_mission:startmission", ped)
 						RegisterNetEvent("esx_mission:return2")
@@ -61,7 +72,7 @@ end)
 if Config.Developer then
 	RegisterCommand('DebugMission', function()
 		if inMission then
-			ESX.ShowNotification('~r~There is a mission already active')
+			ESX.ShowNotification(missionActive)
 		else
 			inMission = true
 			StartMission()
@@ -79,9 +90,13 @@ local propExist = false
 function StartMission()
 	inMission = true
     local ML = Config.Locations[math.random(#Config.Locations)]
-	ESX.ShowNotification("~g~You've started a mission. Go to the location")
-	blip = CreateMissionBlip(ML)
-	SetBlipRoute(blip, true)
+	ESX.ShowNotification(missionStarted)
+	if Config.Zone then
+		zone = CreateZoneBlip(ML)
+	else
+		blip = CreateMissionBlip(ML)
+		SetBlipRoute(blip, true)
+	end
 	local NPCped2 = Config.PedAppearance 
 
 	RequestModel(NPCped2)
@@ -89,16 +104,13 @@ function StartMission()
 		Wait(0)
 	end
 	
-
-
-
-
-	for i=1, Config.NPCAmounts, 1 do
+	for i=1, ML.diff, 1 do
 		local missiongroup = AddRelationshipGroup('MISSIE_PEDS')
 		local rand = math.random(1, 3)
-		local NPC = CreatePed(4, NPCped2, ML.x, ML.y -rand, ML.z, 180, true, true)
+		local NPC = CreatePed(4, NPCped2, ML.x +rand, ML.y -rand, ML.z, 180, true, true)
 		table.insert(spawnedPeds, NPC)
 		FreezeEntityPosition(NPC, false)	
+		SetPedDropsWeaponsWhenDead(NPC, false)
 		SetEntityInvincible(NPC, false)
 		SetBlockingOfNonTemporaryEvents(NPC, true)
 		SetPedRelationshipGroupHash(NPC, GetHashKey('MISSIE_PEDS'))
@@ -108,7 +120,7 @@ function StartMission()
 		SetPedAlertness(NPC, 3)
         TaskCombatPed(NPC, GetPlayerPed(-1), 0, 16)
 		SetPedCombatMovement(NPC, 1)
-		GiveWeaponToPed(NPC, GetHashKey('WEAPON_PISTOL'), 100, false, true)
+		GiveWeaponToPed(NPC, GetHashKey(ML.weapon), 100, false, true)
 		SetPedAsGroupMember(NPC, 1)
 		SetRagdollBlockingFlags(NPC, 1)
 		Wait(100)
@@ -126,22 +138,40 @@ function StartMission()
 		local coords2 = GetEntityCoords(ped)
 		local dist = GetDistanceBetweenCoords(coords2, ML.x, ML.y, ML.z, false)
 	
-		local localmessage2 = "~w~[~b~E~w~] - Open Box"
-		local distancemessage2 = "Open Box"
 
 		if dist <3 and not hasOpened and propExist then --if distance is below 3. And if box has not opened. And if box exist then
 			if dist <1.5 then
-				DrawScriptText(vector3(ML.x, ML.y +1, ML.z), localmessage2)
-				if IsControlJustReleased(0, 38) then
+				DrawScriptText(vector3(ML.x, ML.y, ML.z), localmessage2)
+				if IsControlJustReleased(0, Config.InteractionButton) then
+
+
 					TriggerServerEvent("esx_mission:openbox", ped)
 					RegisterNetEvent("esx_mission:return")
 					AddEventHandler("esx_mission:return", function(status)
    						if status == true then
+							hasOpened = true
+							FreezeEntityPosition(ped, true)
+							GiveWeaponToPed(ped, GetHashKey('WEAPON_UNARMED'), 0, false, true)
+							Wait(100)
+							exports['Progressbar']:startUI(5000, "Lockpicking")
+							TriggerEvent('dp:startEmote', "uncuff")
+							
+							
+		
+							Wait(5000)
+		
+							FreezeEntityPosition(ped, false)
+							TriggerEvent('dp:cancelEmote')
+		
 							deleteProp(ML)
-							RemoveBlip(blip)
+							if Config.Zone then
+								RemoveBlip(zone)
+							else
+								RemoveBlip(blip)
+							end
 							inMission = false
 							TriggerServerEvent("esx_mission:giveRewards")
-							ESX.ShowNotification("~g~Mission ended, Thank for doing bussines")
+							ESX.ShowNotification(missionEnded)
 							DeleteDeadPeds()
 						elseif status == false then
 							hasOpened = false
@@ -150,7 +180,7 @@ function StartMission()
 					
 				end
 			else
-				DrawScriptText(vector3(ML.x, ML.y +1, ML.z), distancemessage2)
+				DrawScriptText(vector3(ML.x, ML.y , ML.z), distancemessage2)
 			end
 		end
 	end
@@ -170,6 +200,14 @@ function CreateMissionBlip(ML)
 	EndTextCommandSetBlipName(blip)
 
 	return blip
+end
+
+function CreateZoneBlip(ML)
+	zone = AddBlipForRadius(ML.x, ML.y, ML.z, ML.radius)
+	SetBlipSprite(zone, 9)
+	SetBlipAlpha(zone, 100)
+	SetBlipColour(zone, ML.color)
+	return zone
 end
 
 DrawScriptText = function(coords, text)
@@ -262,7 +300,11 @@ RegisterCommand('endmission', function()
 		inMission = false
 		ESX.ShowNotification('~g~Mission stopped')
 		deleteProp()
-		RemoveBlip(blip)
+		if Config.Zone then
+			RemoveBlip(zone)
+		else
+			RemoveBlip(blip)
+		end
 		DeleteDeadPeds()
 		hasOpened = true
 	else
